@@ -14,7 +14,10 @@ oldtime = int(time.time())
 conn_lock = threading.Lock()
 data_lock = threading.Lock()
 
-canCommits = 0
+canCommits = [False,False,False]
+preCommits = [False,False,False]
+doCommits = [False,False,False]
+
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.bind((TCP_IP, TCP_PORT))
@@ -26,12 +29,13 @@ def threadConn(c):
 		if not data: break
 		delim1 = data.find('\31')
 		cmd = data[:delim1]
+		nodenum = int(data[delim1+1:])
 		#data = data[5:]
 		print "data is " + data
 		if (cmd == "canCommit?"):
 			data_lock.acquire()
-			canCommits = canCommits+1
-			if(canCommits<3):
+			canCommits[nodenum] = True
+			if(False in canCommits):
 				data_lock.release()
 				conn.send("Wait")
 				conn_lock.release()
@@ -42,13 +46,31 @@ def threadConn(c):
 				conn_lock.release()
 				break
 		elif(cmd=="preCommit"):
-			conn.send("ACK")
-			conn_lock.release()
-			break
+			data_lock.acquire()
+			preCommits[nodenum] = True
+			if(False in preCommits):
+				data_lock.release()
+				conn.send("Wait")
+				conn_lock.release()
+				break
+			else:
+				data_lock.release()
+				conn.send("ACK")
+				conn_lock.release()
+				break
 		elif(cmd=="doCommit"):
-			conn.send("haveCommitted")
-			conn_lock.release()
-			break
+			data_lock.acquire()
+			doCommits[nodenum] = True
+			if(False in doCommits):
+				data_lock.release()
+				conn.send("Wait")
+				conn_lock.release()
+				break
+			else:
+				data_lock.release()
+				conn.send("haveCommitted")
+				conn_lock.release()
+				break
 		else:
 			print("Server doesnt understand: " + data)
 			conn_lock.release()
