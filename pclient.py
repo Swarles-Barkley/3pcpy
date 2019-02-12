@@ -18,30 +18,30 @@ data = ""
 resp = sys.argv[1]
 sanity = 0
 while(data!="Yes" and sanity<30):
-	time.sleep(1)
-	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	sock.connect((TCP_IP, TCP_PORT))
-	sock.send("canCommit?\31"+resp)
-	data = sock.recv(BUFFER_SIZE)
-	sanity = sanity+1
+    time.sleep(1)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect((TCP_IP, TCP_PORT))
+    sock.send("canCommit?\31"+resp)
+    data = sock.recv(BUFFER_SIZE)
+    sanity = sanity+1
 sanity = 0
 while(data!="ACK" and sanity<30):
-	time.sleep(1)
-	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	sock.connect((TCP_IP, TCP_PORT))
-	sock.send("preCommit\31" + resp)
-	data = sock.recv(BUFFER_SIZE)
-	sanity = sanity+1
-	print "client received:", data
+    time.sleep(1)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect((TCP_IP, TCP_PORT))
+    sock.send("preCommit\31" + resp)
+    data = sock.recv(BUFFER_SIZE)
+    sanity = sanity+1
+    print "client received:", data
 sanity = 0
 while(data!="haveCommitted" and sanity<30):
-	time.sleep(1)
-	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	sock.connect((TCP_IP, TCP_PORT))
-	sock.send("doCommit\31" + resp)
-	data = sock.recv(BUFFER_SIZE)
-	sanity = sanity+1
-	print "client received:", data
+    time.sleep(1)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect((TCP_IP, TCP_PORT))
+    sock.send("doCommit\31" + resp)
+    data = sock.recv(BUFFER_SIZE)
+    sanity = sanity+1
+    print "client received:", data
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.connect((TCP_IP, TCP_PORT))
