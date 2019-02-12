@@ -1,4 +1,4 @@
-#!/usock./bin/env python
+#!/usr/bin/env python
 import socket
 import hashlib
 import random
