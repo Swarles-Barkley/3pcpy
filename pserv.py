@@ -31,42 +31,38 @@ def threadConn(conn):
         nodenum = int(nodenum)
         #data = data[5:]
         print "data is " + data
-        if (cmd == "canCommit?"):
-            data_lock.acquire()
-            canCommits[nodenum] = True
-            if(False in canCommits):
-                data_lock.release()
-                conn.send("Wait")
-                break
-            else:
-                data_lock.release()
-                conn.send("Yes")
-                break
-        elif(cmd=="preCommit"):
-            data_lock.acquire()
-            preCommits[nodenum] = True
-            if(False in preCommits):
-                data_lock.release()
-                conn.send("Wait")
-                break
-            else:
-                data_lock.release()
-                conn.send("ACK")
-                break
-        elif(cmd=="doCommit"):
-            data_lock.acquire()
-            doCommits[nodenum] = True
-            if(False in doCommits):
-                data_lock.release()
-                conn.send("Wait")
-                break
-            else:
-                data_lock.release()
-                conn.send("haveCommitted")
-                break
+
+        if cmd == "canCommit?":
+            with data_lock:
+                canCommits[nodenum] = True
+                if not all(canCommits):
+                    conn.send("Wait")
+                else:
+                    conn.send("Yes")
+            break
+
+        elif cmd=="preCommit":
+            with data_lock:
+                preCommits[nodenum] = True
+                if not all(preCommits):
+                    conn.send("Wait")
+                else:
+                    conn.send("ACK")
+            break
+
+        elif cmd=="doCommit":
+            with data_lock:
+                doCommits[nodenum] = True
+                if not all(doCommits):
+                    conn.send("Wait")
+                else:
+                    conn.send("haveCommitted")
+            break
+
         else:
             print("Server doesnt understand: " + data)
             break
+
         print "server received: ", data
 
 def main():
