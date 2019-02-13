@@ -20,6 +20,7 @@ doCommits = [False,False,False]
 
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 sock.bind((TCP_IP, TCP_PORT))
 sock.listen(5)
 
