@@ -26,9 +26,9 @@ def threadConn(conn):
     while 1:
         data = conn.recv(BUFFER_SIZE)
         if not data: break
-        delim1 = data.find('\31')
-        cmd = data[:delim1]
-        nodenum = int(data[delim1+1:])
+        if '\31' not in data: break
+        cmd, nodenum = data.split('\31', 1)
+        nodenum = int(nodenum)
         #data = data[5:]
         print "data is " + data
         if (cmd == "canCommit?"):
@@ -67,7 +67,7 @@ def threadConn(conn):
         else:
             print("Server doesnt understand: " + data)
             break
-        print"server received: ", data
+        print "server received: ", data
 
 def main():
     while 1:
