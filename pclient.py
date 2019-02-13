@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import print_function
 import socket
 import hashlib
 import random
@@ -16,6 +17,10 @@ data = ""
 #sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 #sock.connect((TCP_IP, TCP_PORT))
 resp = sys.argv[1]
+
+def log(*args):
+    print("[client %s]" % resp, *args)
+
 sanity = 0
 while(data!="Yes" and sanity<30):
     time.sleep(1)
@@ -32,7 +37,7 @@ while(data!="ACK" and sanity<30):
     sock.send("preCommit\31" + resp)
     data = sock.recv(BUFFER_SIZE)
     sanity = sanity+1
-    print "client received:", data
+    log("received:", data)
 sanity = 0
 while(data!="haveCommitted" and sanity<30):
     time.sleep(1)
@@ -41,13 +46,13 @@ while(data!="haveCommitted" and sanity<30):
     sock.send("doCommit\31" + resp)
     data = sock.recv(BUFFER_SIZE)
     sanity = sanity+1
-    print "client received:", data
+    log("received:", data)
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.connect((TCP_IP, TCP_PORT))
 sock.send("doCommit\31" + resp)
 data = sock.recv(BUFFER_SIZE)
-print "client received:", data
+log("received:", data)
 
 sock.close()
 
