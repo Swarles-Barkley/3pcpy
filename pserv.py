@@ -23,47 +23,43 @@ sock.bind((TCP_IP, TCP_PORT))
 sock.listen(5)
 
 def threadConn(conn):
-    while 1:
-        data = conn.recv(BUFFER_SIZE)
-        if not data: break
-        if '\31' not in data: break
-        cmd, nodenum = data.split('\31', 1)
-        nodenum = int(nodenum)
-        #data = data[5:]
-        print "data is " + data
+    data = conn.recv(BUFFER_SIZE)
+    if not data: return
+    if '\31' not in data: return
+    cmd, nodenum = data.split('\31', 1)
+    nodenum = int(nodenum)
+    #data = data[5:]
+    print "data is " + data
 
-        if cmd == "canCommit?":
-            with data_lock:
-                canCommits[nodenum] = True
-                if not all(canCommits):
-                    conn.send("Wait")
-                else:
-                    conn.send("Yes")
-            break
 
-        elif cmd=="preCommit":
-            with data_lock:
-                preCommits[nodenum] = True
-                if not all(preCommits):
-                    conn.send("Wait")
-                else:
-                    conn.send("ACK")
-            break
+    if cmd == "canCommit?":
+        with data_lock:
+            canCommits[nodenum] = True
+            if not all(canCommits):
+                conn.send("Wait")
+            else:
+                conn.send("Yes")
 
-        elif cmd=="doCommit":
-            with data_lock:
-                doCommits[nodenum] = True
-                if not all(doCommits):
-                    conn.send("Wait")
-                else:
-                    conn.send("haveCommitted")
-            break
+    elif cmd=="preCommit":
+        with data_lock:
+            preCommits[nodenum] = True
+            if not all(preCommits):
+                conn.send("Wait")
+            else:
+                conn.send("ACK")
 
-        else:
-            print("Server doesnt understand: " + data)
-            break
+    elif cmd=="doCommit":
+        with data_lock:
+            doCommits[nodenum] = True
+            if not all(doCommits):
+                conn.send("Wait")
+            else:
+                conn.send("haveCommitted")
 
-        print "server received: ", data
+    else:
+        print("Server doesnt understand: " + data)
+
+    print "server received: ", data
 
 def main():
     while 1:
