@@ -7,7 +7,7 @@ import time
 import sys
 
 TCP_IP = '127.0.0.1'
-TCP_PORT = 1878
+TCP_PORT = 3878
 BUFFER_SIZE = 1024
 #time.sleep(5)
 random.seed(1848)
