@@ -1,11 +1,16 @@
 #!/usr/bin/env python
 
-import sys
-import socket
+# pserv is a coordinator in the three phase commit protocol
+
+from __future__ import print_function
 import hashlib
-import time
+import json
+import operator
 import random
+import socket
+import sys
 import threading
+import time
 
 TCP_IP = '127.0.0.1'
 TCP_PORT = 3878
@@ -13,64 +18,121 @@ BUFFER_SIZE = 1024
 N = 3 # number of nodes
 
 data_lock = threading.Lock() # protects the following variables
-nodes = []
-canCommits = [False,False,False]
-preCommits = [False,False,False]
-doCommits = [False,False,False]
+nodes = {}
+neighbors = {}
+
+event = threading.Event()
 
 def threadConn(conn):
-    data = conn.recv(BUFFER_SIZE)
-    if not data: return
-    if '\31' not in data: return
-    cmd, nodenum = data.split('\31', 1)
-    nodenum = int(nodenum)
-    #data = data[5:]
-    print "data is " + data
+    try:
+        data = conn.recv(BUFFER_SIZE)
+        if not data: return
+        if '\31' not in data: return
+        args = data.split('\31', 2)
+        cmd = args[0]
+        nodenum = int(args[1])
+        extra = args[2:]
+        print("data is", data)
 
-    if cmd == "hello":
-        with data_lock:
-            nodes.append(nodenum)
-            if len(nodes) < N:
-                conn.send("Wait")
-            else:
-                conn.send("Start")
-                canCommits[:] = [False]*N
-                preCommits[:] = [False]*N
-                doCommits[:] = [False]*N
+        if cmd == "hello":
+            nodedata = json.loads(extra[0])
+            with data_lock:
+                nodes[nodenum] = nodedata
+                neighbors[nodenum] = nodedata['nbr']
+                conn.send("ok")
 
-    elif cmd == "canCommit?":
-        with data_lock:
-            canCommits[nodenum] = True
-            if not all(canCommits):
-                conn.send("Wait")
-            else:
-                conn.send("Yes")
+                if len(nodes) >= N:
+                    event.set()
 
-    elif cmd=="preCommit":
-        with data_lock:
-            preCommits[nodenum] = True
-            if not all(preCommits):
-                conn.send("Wait")
-            else:
-                conn.send("ACK")
+        elif cmd == "startVote":
+            with data_lock:
+                candidate = nodenum
+                conn.send("OK")
+                # XXX inform other nodes about the vote...
 
-    elif cmd=="doCommit":
-        with data_lock:
-            doCommits[nodenum] = True
-            if not all(doCommits):
-                conn.send("Wait")
-            else:
-                conn.send("haveCommitted")
+        else:
+            print("Server doesnt understand: " + data)
+    finally:
+        conn.close()
 
-    else:
-        print("Server doesnt understand: " + data)
+def send(nodenum, msg):
+    with data_lock:
+        port = nodes[nodenum]["port"]
+    addr = (TCP_IP, port)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect(addr)
+    try:
+        sock.send(msg)
+        data = sock.recv(BUFFER_SIZE)
+        return data
+    finally:
+        sock.close()
 
-def main():
-    global N
+def run_the_protocol():
+    canCommits = [False]*N
+    preCommits = [False]*N
+    doCommits = [False]*N
+    with data_lock:
+        winner = select_best_node(neighbors)
 
-    if len(sys.argv) >= 2:
-        N = int(sys.argv[1])
 
+    with data_lock:
+        xnodes = nodes.copy()
+
+    # PHASE 1
+    # TODO: send requests in parallel
+    for n in xnodes:
+        resp = send(n, "canCommit?")
+        if resp == "Yes":
+            canCommits[n] = True
+        else:
+            print("node %d: received: %r" % (n, resp))
+            # abort?
+
+    if not all(canCommits):
+        print("canCommit: cannot proceed")
+        abort()
+
+    # PHASE 2
+
+    for n in xnodes:
+        resp = send(n, "preCommit")
+        if resp == "ACK":
+            preCommits[n] = True
+        else:
+            print("node %d: received: %r" % (n, resp))
+
+    if not all(preCommits):
+        print("preCommit: cannot proceed")
+        abort()
+
+
+    # PHASE 3
+
+    for n in xnodes:
+        resp = send(n, "doCommit")
+        if resp == "haveCommitted":
+            doCommits[n] = True
+        else:
+            print("node %d: received: %r" % (n, resp))
+
+    if not all(doCommits):
+        print("commit failed somehow")
+
+
+def select_best_node(neighbors):
+    # select the node with the minimum average ping time
+    # the exact mechanism doesn't really matter
+    combined = {}
+    for n in neighbors.keys():
+        for m, ping_time in neighbors[n]:
+            combined.setdefault(m, 0)
+            combined[m] += ping_time
+
+    best, _ = min(combined.items(), key=operator.itemgetter(1))
+    return best
+
+def serverthread():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind((TCP_IP, TCP_PORT))
@@ -78,10 +140,22 @@ def main():
 
     while 1:
         conn, addr = sock.accept()
-        thr = threading.Thread(target=threadConn, args=(conn,))
-        thr.start()
-        #conn.send(data)
+        threading.Thread(target=threadConn, args=(conn,)).start()
 
-    conn.close()
+def main():
+    global N
+
+    if len(sys.argv) >= 2:
+        N = int(sys.argv[1])
+
+
+    thr = threading.Thread(target=serverthread, args=())
+    thr.daemon = True
+    thr.start()
+    event.wait()
+
+    print("running")
+    run_the_protocol()
+    sys.exit(0)
 
 main()
