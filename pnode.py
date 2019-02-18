@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# pclient is a node in the three phase commit protocol
+# pnode is a node in the three phase commit protocol
 
 from __future__ import print_function
 import hashlib
