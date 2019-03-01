@@ -74,6 +74,7 @@ def run_the_protocol():
     doCommits = [False]*N
     with data_lock:
         winner = select_best_node(neighbors)
+    print("electing node %s" % winner)
 
 
     with data_lock:
@@ -118,6 +119,8 @@ def run_the_protocol():
 
     if not all(doCommits):
         print("commit failed somehow")
+
+    print("success")
 
 
 def select_best_node(neighbors):
