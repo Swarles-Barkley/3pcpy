@@ -16,6 +16,7 @@ TCP_IP = '127.0.0.1'
 TCP_PORT = 3878
 BUFFER_SIZE = 1024
 N = 3 # number of nodes
+TIMEOUT = 0.250
 
 data_lock = threading.Lock() # protects the following variables
 nodes = {}
@@ -61,10 +62,15 @@ def send(nodenum, msg):
     addr = (TCP_IP, port)
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(addr)
+    sock.settimeout(TIMEOUT)
     try:
         sock.send(msg)
         data = sock.recv(BUFFER_SIZE)
         return data
+    except socket.timeout:
+        return "Timeout"
+    except socket.error:
+        return "Error"
     finally:
         sock.close()
 
@@ -86,6 +92,8 @@ def run_the_protocol():
         resp = send(n, "canCommit?")
         if resp == "Yes":
             canCommits[n] = True
+        elif resp == "Timeout" or resp == "Error":
+            canCommits[n] = False
         else:
             print("node %d: received: %r" % (n, resp))
             # abort?
@@ -100,6 +108,8 @@ def run_the_protocol():
         resp = send(n, "preCommit")
         if resp == "ACK":
             preCommits[n] = True
+        elif resp == "Timeout" or resp == "Error":
+            preCommits[n] = False
         else:
             print("node %d: received: %r" % (n, resp))
 
@@ -114,6 +124,8 @@ def run_the_protocol():
         resp = send(n, "doCommit")
         if resp == "haveCommitted":
             doCommits[n] = True
+        elif reps == "Timeout" or resp == "Error":
+            doCommits[n] = False
         else:
             print("node %d: received: %r" % (n, resp))
 
@@ -122,6 +134,10 @@ def run_the_protocol():
 
     print("success")
 
+def abort():
+    print("aborting...")
+    # TODO
+    sys.exit(1)
 
 def select_best_node(neighbors):
     # select the node with the minimum average ping time
