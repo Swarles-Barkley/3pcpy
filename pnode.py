@@ -19,6 +19,7 @@ random.seed(1848)
 
 nodenum = int(sys.argv[1])
 N = int(sys.argv[2])
+random.seed(1848 + nodenum)
 
 MY_PORT = TCP_PORT + nodenum + 1
 
@@ -30,9 +31,9 @@ def log(*args):
 
 neighbors = [
     # node, quality
-    (0, 0.1),
-    (1, 0.5),
-    (2, 0.7),
+    (0, random.random()),
+    (1, random.random()),
+    (2, random.random()),
 ]
 
 nodedata = {
