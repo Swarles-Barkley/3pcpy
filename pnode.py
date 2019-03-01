@@ -93,7 +93,7 @@ def main():
     sock.bind((TCP_IP, MY_PORT))
     sock.listen(5)
 
-    data = trysend("hello\31"+str(nodenum)+"\31" + json.dumps(nodedata))
+    data = trysend("hello\37"+str(nodenum)+"\37" + json.dumps(nodedata))
     log("sent hello, received:", data)
 
     while 1:
@@ -102,12 +102,12 @@ def main():
         thr.start()
         #conn.send(data)
 
-    #data = trysend("canCommit?\31"+nodenum)
+    #data = trysend("canCommit?\37"+nodenum)
 
-    #data = trysend("preCommit\31" + nodenum)
+    #data = trysend("preCommit\37" + nodenum)
     #log("received:", data)
 
-    #data = trysend("doCommit\31" + nodenum)
+    #data = trysend("doCommit\37" + nodenum)
     #log("received:", data)
 
 main()

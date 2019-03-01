@@ -27,8 +27,8 @@ def threadConn(conn):
     try:
         data = conn.recv(BUFFER_SIZE)
         if not data: return
-        if '\31' not in data: return
-        args = data.split('\31', 2)
+        if '\37' not in data: return
+        args = data.split('\37', 2)
         cmd = args[0]
         nodenum = int(args[1])
         extra = args[2:]
