@@ -64,29 +64,32 @@ def trysend(msg):
 
 def threadConn(conn):
     global state
-    data = conn.recv(BUFFER_SIZE)
-    if not data: return
-    log("data is ", data)
-    cmd = data
+    try:
+        data = conn.recv(BUFFER_SIZE)
+        if not data: return
+        log("data is ", data)
+        cmd = data
 
-    if cmd == "canCommit?":
-        with data_lock:
-            state = "waiting"
-            #candidate = extra[0]
-        conn.send("Yes")
+        if cmd == "canCommit?":
+            with data_lock:
+                state = "waiting"
+                #candidate = extra[0]
+            conn.send("Yes")
 
-    elif cmd=="preCommit":
-        with data_lock:
-            pass
-        conn.send("ACK")
+        elif cmd=="preCommit":
+            with data_lock:
+                pass
+            conn.send("ACK")
 
-    elif cmd=="doCommit":
-        with data_lock:
-            pass
-        conn.send("haveCommitted")
+        elif cmd=="doCommit":
+            with data_lock:
+                pass
+            conn.send("haveCommitted")
 
-    else:
-        log("don't understand:", data)
+        else:
+            log("don't understand:", data)
+    finally:
+        conn.close()
 
 def main():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
