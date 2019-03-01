@@ -23,6 +23,8 @@ random.seed(1848 + nodenum)
 
 MY_PORT = TCP_PORT + nodenum + 1
 
+done = threading.Event()
+
 data_lock = threading.Lock() # protects variables below
 state = ""
 
@@ -86,11 +88,18 @@ def threadConn(conn):
             with data_lock:
                 pass
             conn.send("haveCommitted")
+            done.set()
 
         else:
             log("don't understand:", data)
     finally:
         conn.close()
+
+def serverthread(sock):
+    while 1:
+        conn, addr = sock.accept()
+        thr = threading.Thread(target=threadConn, args=(conn,))
+        thr.start()
 
 def main():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -100,18 +109,10 @@ def main():
     data = trysend("hello\37"+str(nodenum)+"\37" + json.dumps(nodedata))
     log("sent hello, received:", data)
 
-    while 1:
-        conn, addr = sock.accept()
-        thr = threading.Thread(target=threadConn, args=(conn,))
-        thr.start()
-        #conn.send(data)
+    thr = threading.Thread(target=serverthread, args=(sock,))
+    thr.daemon = True
+    thr.start()
 
-    #data = trysend("canCommit?\37"+nodenum)
-
-    #data = trysend("preCommit\37" + nodenum)
-    #log("received:", data)
-
-    #data = trysend("doCommit\37" + nodenum)
-    #log("received:", data)
+    done.wait()
 
 main()
