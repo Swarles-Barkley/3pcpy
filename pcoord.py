@@ -100,7 +100,7 @@ def run_the_protocol():
 
     if not all(canCommits):
         print("canCommit: cannot proceed")
-        abort()
+        abort(xnodes)
 
     # PHASE 2
 
@@ -115,7 +115,7 @@ def run_the_protocol():
 
     if not all(preCommits):
         print("preCommit: cannot proceed")
-        abort()
+        abort(xnodes)
 
 
     # PHASE 3
@@ -134,7 +134,7 @@ def run_the_protocol():
 
     print("success")
 
-def abort():
+def abort(xnodes):
     print("aborting...")
     # TODO
     aborted = [False]*N

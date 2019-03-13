@@ -28,6 +28,10 @@ done = threading.Event()
 data_lock = threading.Lock() # protects variables below
 state = ""
 
+stats_lock = threading.Lock()
+sent_bytes = 0
+received_bytes = 0
+
 def log(*args):
     print("[client %s]" % nodenum, *args)
 
@@ -47,11 +51,17 @@ class Timeout(Exception):
     """Request timed out"""
 
 def send(msg):
+    global sent_bytes
+    global received_bytes
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((TCP_IP, TCP_PORT))
     try:
         sock.send(msg)
+        with stats_lock:
+            sent_bytes += len(msg)
         data = sock.recv(BUFFER_SIZE)
+        with stats_lock:
+            received_bytes += len(data)
         return data
     finally:
         sock.close()
@@ -67,8 +77,17 @@ def trysend(msg):
 
 def threadConn(conn):
     global state
+    global received_bytes
+    def reply(msg):
+        global sent_bytes
+        r = conn.send(msg)
+        with stats_lock:
+            sent_bytes += len(msg)
+        return r
     try:
         data = conn.recv(BUFFER_SIZE)
+        with stats_lock:
+            received_bytes += len(data)
         if not data: return
         log("data is ", data)
         cmd = data
@@ -77,23 +96,23 @@ def threadConn(conn):
             with data_lock:
                 state = "waiting"
                 #candidate = extra[0]
-            conn.send("Yes")
+            reply("Yes")
 
         elif cmd=="preCommit":
             with data_lock:
                 state = "precommit"
-            conn.send("ACK")
+            reply("ACK")
 
         elif cmd == "doAbort":
             with data_lock:
                 state = "aborted"
-            conn.send("haveAborted")
+            reply("haveAborted")
             done.set()
 
         elif cmd=="doCommit":
             with data_lock:
                 state = "committed"
-            conn.send("haveCommitted")
+            reply("haveCommitted")
             done.set()
 
         else:
@@ -112,6 +131,7 @@ def recovery():
     #   otherwise -> block
     # send decision to all nodes
     # nodes respond
+    pass
 
 def serverthread(sock):
     while 1:
@@ -134,5 +154,8 @@ def main():
     done.wait()
 
     log("final state:", state)
+    with stats_lock:
+        log("sent %d bytes" % sent_bytes)
+        log("received %d bytes" % received_bytes)
 
 main()
