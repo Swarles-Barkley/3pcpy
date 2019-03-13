@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-# pnode is a node in the three phase commit protocol
+# pnode is an embedded node in the network,
+# and a node in the three phase commit protocol
 
 from __future__ import print_function
 import hashlib
@@ -35,6 +36,7 @@ received_bytes = 0
 def log(*args):
     print("[client %s]" % nodenum, *args)
 
+# each node keeps track of its connection quality to the coordinator nodes in the cluster
 neighbors = [
     # node, quality
     (0, random.random()),
@@ -131,6 +133,10 @@ def recovery():
     #   otherwise -> block
     # send decision to all nodes
     # nodes respond
+
+    # DISREGARD
+
+    # 1. unilaterally abort, then call a new election
     pass
 
 def serverthread(sock):

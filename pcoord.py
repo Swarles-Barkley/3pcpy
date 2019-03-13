@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-# pcoord is a coordinator in the three phase commit protocol
+# pcoord is a coordinator node in the network
+# it can be an election coordinator or a regular node in the three phase commit protocol
 
 from __future__ import print_function
 import hashlib
