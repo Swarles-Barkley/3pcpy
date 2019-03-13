@@ -1,4 +1,5 @@
-avgFailChance = 0.02
+avgFailChance = 0.3
+permaFailChance = 0.0
 times = array()
 failures = array()
 timeout = 200 #ms
@@ -6,17 +7,27 @@ simnum = 500
 phasethresh = 10
 phaseretry = 0
 nodes = 100
-quor = 0.02
+quor = 0.3
 results = matrix(0,nrow = simnum, ncol = 10)
 results2 = matrix(0,nrow = simnum, ncol = 10)
 results3 = matrix(0,nrow = simnum, ncol = 10)
 
+overheadresults = matrix(0,nrow = simnum, ncol = 10)
+overheadresults2 = matrix(0,nrow = simnum, ncol = 10)
+overheadresults3 = matrix(0,nrow = simnum, ncol = 10)
+
 for(i in 1:10){
   nodes = 25*i
   for(j in 1:simnum){
-    results[j,i] = systemsuccess(1,200,avgFailChance, ceiling(quor*nodes),nodes,0)
-    results2[j,i] = systemsuccess(1,200,avgFailChance, ceiling(quor*nodes),nodes,2)
-    results3[j,i] = systemsuccess(1,200,avgFailChance, ceiling(quor*nodes),nodes,10)
+    failedmsgs <<- 0
+    results[j,i] = systemsuccess(1,200,avgFailChance, permaFailChance, ceiling(quor*nodes),nodes,0)
+    overheadresults[j,i] = failedmsgs
+    failedmsgs <<- 0
+    results2[j,i] = systemsuccess(1,200,avgFailChance, permaFailChance, ceiling(quor*nodes),nodes,2)
+    overheadresults2[j,i] = failedmsgs
+    failedmsgs <<- 0
+    results3[j,i] = systemsuccess(1,200,avgFailChance, permaFailChance, ceiling(quor*nodes),nodes,10)
+    overheadresults3[j,i] = failedmsgs
   }
 }
 
@@ -27,7 +38,7 @@ y3 = rep(0,10)
 for(i in 1:10){
   y[i] = mean(results[,i])*100
 }
-plot(x,y, xlab="# nodes", ylab="% success", main="Full System: 70% Quorum with 30%", ylim=c(0,100), xlim=c(0,250), pch=0, col="red")
+plot(x,y, xlab="# nodes", ylab="% success", main="Full System: 70% Quorum with 30% node failure", ylim=c(0,100), xlim=c(0,250), pch=0, col="red")
 for(i in 1:10){
   y2[i] = mean(results2[,i])*100
 }

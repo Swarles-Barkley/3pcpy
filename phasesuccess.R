@@ -11,11 +11,12 @@ phasesuccess<-function(timeDistro, timeout, failureProb, permaFails, quarumThres
       nodefailures = nodefailures+(1*nodeWeights[i])
     }
   }
+  failedmsgs <<- failedmsgs - sum(permaFails)
   #tmpbool = lolrly(failureProb, 1)
   #if(isTRUE(tmpbool)){
   #  return(FALSE)
   #}
-  if(nodefailures>=quarumThreshold){
+  if(nodefailures>quarumThreshold){
     return(FALSE)
   }
   return(TRUE)

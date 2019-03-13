@@ -1,5 +1,5 @@
-avgFailChance = 0.01
-permaFailChance = 0.01
+avgFailChance = 0.00
+permaFailChance = 0.3
 times = array()
 failures = array()
 timeout = 200 #ms
@@ -9,7 +9,7 @@ phasethresh2 = 2
 phasethresh3 = 10
 phaseretry = 0
 nodes = 100
-quor = 0.02
+quor = 0.3
 results = matrix(0,nrow = simnum, ncol = 10)
 results2 = matrix(0,nrow = simnum, ncol = 10)
 results3 = matrix(0,nrow = simnum, ncol = 10)
@@ -24,7 +24,7 @@ for(j in 1:simnum){
     #if(threshold<nodes*quor){
     #  threshold = threshold+1
     #}
-    threshold = threshold+1
+    #threshold = threshold+1
     phaseretry = 0
     tmp = phasesuccess(times, timeout, avgFailChance, permaFailures, threshold,nodeWeights)
     while(isFALSE(tmp) && phaseretry<phasethresh1){
@@ -66,7 +66,7 @@ y3 = rep(0,10)
 for(i in 1:10){
   y[i] = mean(results[,i])*100
 }
-plot(x,y, xlab="# nodes", ylab="% success", main="98% Quorum with 2% message failure", ylim=c(0,100), xlim=c(0,250), pch=0, col="red")
+plot(x,y, xlab="# nodes", ylab="% success", main="70% Quorum with 30% node failure", ylim=c(0,100), xlim=c(0,250), pch=0, col="red")
 for(i in 1:10){
   y2[i] = mean(results2[,i])*100
 }
