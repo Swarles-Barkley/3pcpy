@@ -137,6 +137,15 @@ def run_the_protocol():
 def abort():
     print("aborting...")
     # TODO
+    aborted = [False]*N
+    for n in xnodes:
+        resp = send(n, "doAbort")
+        if resp == "haveAborted":
+            aborted[n] = True
+        elif reps == "Timeout" or resp == "Error":
+            aborted[n] = False
+        else:
+            print("node %d: received: %r" % (n, resp))
     sys.exit(1)
 
 def select_best_node(neighbors):

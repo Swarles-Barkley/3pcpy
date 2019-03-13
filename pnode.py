@@ -81,12 +81,18 @@ def threadConn(conn):
 
         elif cmd=="preCommit":
             with data_lock:
-                pass
+                state = "precommit"
             conn.send("ACK")
+
+        elif cmd == "doAbort":
+            with data_lock:
+                state = "aborted"
+            conn.send("haveAborted")
+            done.set()
 
         elif cmd=="doCommit":
             with data_lock:
-                pass
+                state = "committed"
             conn.send("haveCommitted")
             done.set()
 
@@ -94,6 +100,18 @@ def threadConn(conn):
             log("don't understand:", data)
     finally:
         conn.close()
+
+def recovery():
+    # elect new coordinator ????
+    # coordinator colects states
+    # decision:
+    #   any aborted -> abort
+    #   any committed -> commit
+    #   any pre-committed, and a quorum of sites are in wit or precommit -> precommit
+    #   a quorum of sites in wait or pre-abort -> preabort
+    #   otherwise -> block
+    # send decision to all nodes
+    # nodes respond
 
 def serverthread(sock):
     while 1:
@@ -114,5 +132,7 @@ def main():
     thr.start()
 
     done.wait()
+
+    log("final state:", state)
 
 main()
