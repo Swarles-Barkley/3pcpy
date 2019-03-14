@@ -4,7 +4,6 @@
 # it can be an election coordinator or a regular node in the three phase commit protocol
 
 from __future__ import print_function
-import hashlib
 import json
 import operator
 import random

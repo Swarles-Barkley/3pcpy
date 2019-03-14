@@ -3,8 +3,9 @@
 # pnode is an embedded node in the network,
 # and a node in the three phase commit protocol
 
+# TODO probability of nodes crashing
+
 from __future__ import print_function
-import hashlib
 import json
 import random
 import socket
