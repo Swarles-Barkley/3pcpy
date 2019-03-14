@@ -14,6 +14,7 @@ import time
 
 TCP_IP = '127.0.0.1'
 TCP_PORT = 3878
+PORT_START = 32400
 BUFFER_SIZE = 1024
 #time.sleep(5)
 random.seed(1848)
@@ -22,7 +23,7 @@ nodenum = int(sys.argv[1])
 N = int(sys.argv[2])
 random.seed(1848 + nodenum)
 
-MY_PORT = TCP_PORT + nodenum + 1
+MY_PORT = PORT_START + nodenum
 
 done = threading.Event()
 
