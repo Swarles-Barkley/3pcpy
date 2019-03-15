@@ -73,7 +73,7 @@ def threadConn(conn):
         ## Coordinator messages
         if cmd == "hello":
             if not send_hello:
-                print("warning: got hello")
+                log("warning: got hello")
             else:
                 with data_lock:
                     nodes[nodenum] = 1
@@ -121,7 +121,7 @@ def threadConn(conn):
                 done.set()
 
             else:
-                print("Server doesnt understand: " + data)
+                log("Server doesnt understand: " + data)
     finally:
         conn.close()
 
@@ -216,16 +216,16 @@ def run_an_election():
         elif resp == "Timeout" or resp == "Error":
             canCommits[n] = False
         else:
-            print("node %d: received: %r" % (n, resp))
+            log("node %d: received: %r" % (n, resp))
             # abort?
 
     if not all(canCommits):
         print(canCommits)
-        print("canCommit: cannot proceed")
+        log("canCommit: cannot proceed")
         abort(xnodes)
 
     candidate = select_best_node(neighbors)
-    print("electing node %s" % candidate)
+    log("electing node %s" % candidate)
 
     # PHASE 2
 
@@ -236,10 +236,10 @@ def run_an_election():
         elif resp == "Timeout" or resp == "Error":
             preCommits[n] = False
         else:
-            print("node %d: received: %r" % (n, resp))
+            log("node %d: received: %r" % (n, resp))
 
     if not all(preCommits):
-        print("preCommit: cannot proceed")
+        log("preCommit: cannot proceed")
         abort(xnodes)
 
 
@@ -252,15 +252,15 @@ def run_an_election():
         elif resp == "Timeout" or resp == "Error":
             doCommits[n] = False
         else:
-            print("node %d: received: %r" % (n, resp))
+            log("node %d: received: %r" % (n, resp))
 
     if not all(doCommits):
-        print("commit failed somehow")
+        log("commit failed somehow")
 
-    print("success")
+    log("success")
 
 def abort(xnodes):
-    print("aborting...")
+    log("aborting...")
     # TODO
     aborted = [False]*N
     for n in xnodes:
@@ -270,7 +270,7 @@ def abort(xnodes):
         elif resp == "Timeout" or resp == "Error":
             aborted[n] = False
         else:
-            print("node %d: received: %r" % (n, resp))
+            log("node %d: received: %r" % (n, resp))
     sys.exit(1)
 
 def select_best_node(neighbors):
