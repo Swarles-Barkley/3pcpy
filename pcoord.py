@@ -61,14 +61,14 @@ def threadConn(conn):
     global received_bytes
     def reply(msg):
         global sent_bytes
+        with stats_lock:
+            sent_bytes += len(msg)
         if random_failure():
             # simulate transient packet loss
             log("dropping response:", msg)
             conn.send("Timeout")
             return 0
         r = conn.send(msg)
-        with stats_lock:
-            sent_bytes += len(msg)
         return r
 
     try:
@@ -80,6 +80,10 @@ def threadConn(conn):
         if len(args) > 1:
             nodenum = int(args[1])
             extra = args[2:]
+
+        if cmd != "hello":
+            with stats_lock:
+                received_bytes += len(data)
 
         ## Coordinator messages
         if cmd == "hello":
@@ -123,14 +127,14 @@ def threadConn(conn):
                 with data_lock:
                     state = "aborted"
                 reply("haveAborted")
-                done.set()
+                #done.set()
 
             elif cmd == "doCommit":
                 with data_lock:
                     state = "committed"
                     winner = candidate
                 reply("haveCommitted")
-                done.set()
+                #done.set()
 
             elif cmd == "kill":
                 log("killed")
@@ -154,6 +158,9 @@ def get_port_for_node(nodenum):
 def send(nodenum, msg, can_fail=True, stats=True):
     global sent_bytes
     global received_bytes
+    if stats:
+        with stats_lock:
+            sent_bytes += len(msg)
     if can_fail and topology and not topology[nodenum][mynodenum]:
         log("node %d out of range:" % nodenum, msg)
         return "Timeout"
@@ -168,9 +175,6 @@ def send(nodenum, msg, can_fail=True, stats=True):
     try:
         sock.connect(addr)
         sock.send(msg)
-        if stats:
-            with stats_lock:
-                sent_bytes += len(msg)
         data = sock.recv(BUFFER_SIZE)
         if stats:
             with stats_lock:
