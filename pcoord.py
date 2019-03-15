@@ -384,6 +384,8 @@ def parse_args():
         help="generate a randomly-connected network topology")
     parser.add_argument("--topology-seed", type=int, default=1,
         help="seed for generating the topology matrix; must be the same for all nodes")
+    parser.add_argument("--seed", type=int, default=None,
+        help="seed for other randomness")
     return parser.parse_args()
 
 def generate_topology(seed, p):
@@ -409,7 +411,10 @@ def main():
     global topology
 
     args = parse_args()
-    random.seed(1234 + args.nodenum)
+    if args.seed:
+        random.seed(args.seed + args.nodenum)
+    else:
+        random.seed(1234 + args.nodenum)
     N = args.N
     MY_PORT = BASE_PORT + args.nodenum
     mynodenum = args.nodenum
