@@ -1,6 +1,6 @@
-nodes=20
+nodes=100
 coords=()
-for n in {1..10}; do
+for n in {0..9}; do
     coords+=(--coord $n)
 done
 for n in {1..$nodes}; do
