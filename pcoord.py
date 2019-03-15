@@ -18,7 +18,7 @@ BASE_PORT = 12000
 BUFFER_SIZE = 1024
 N = 3 # number of nodes
 TIMEOUT = 0.250
-RETRIES = 10 # number of times to retry a phase
+RETRIES = 3 # number of times to retry a phase
 QUORUM = 1.0
 FAILURE = 0.0 # transient failure rate
 
