@@ -264,6 +264,7 @@ def run_an_election():
     if not quorumOf(canCommits):
         log("canCommit: cannot proceed")
         abort(xnodes)
+        return
 
     candidate = select_best_node(neighbors)
     log("electing node %s" % candidate)
@@ -291,6 +292,7 @@ def run_an_election():
     if not quorumOf(preCommits):
         log("preCommit: cannot proceed")
         abort(xnodes)
+        return
 
 
     # PHASE 3
@@ -332,7 +334,6 @@ def abort(xnodes):
             aborted[n] = False
         else:
             log("node %d: received: %r" % (n, resp))
-    sys.exit(1)
 
 def cleanup(xnodes):
     """cleans up at the end of an election by sending all other nodes a "Kill" message"""
