@@ -25,8 +25,7 @@ FAILURE = 1 - .95 # transient failure rate
 data_lock = threading.Lock() # protects the following variables
 state = "" # current three-phase-commit node state
 nodes = {} # node => nodedata dict
-current_coordinator = None
-winner = None
+winner = None # current elected coordinator
 candidate = None
 
 role = 'node' # or coord; never changes
@@ -94,7 +93,7 @@ def threadConn(conn):
                 if ready:
                     initialized.set()
 
-        elif cmd == "startVote":
+        elif cmd == "startVote" and role == "coord":
             with data_lock:
                 candidate = nodenum
             reply("OK")
@@ -131,6 +130,11 @@ def threadConn(conn):
                 reply("haveCommitted")
                 done.set()
 
+            elif cmd == "kill":
+                log("killed")
+                done.set()
+                sys.exit(1)
+
             else:
                 log("Server doesnt understand: " + data)
     finally:
@@ -145,10 +149,10 @@ def get_port_for_node(nodenum):
         port = nodes[nodenum]["port"]
     return port
 
-def send(nodenum, msg):
+def send(nodenum, msg, can_fail=True):
     global sent_bytes
     global received_bytes
-    if random_failure():
+    if can_fail and random_failure():
         # simulate transient packet loss
         log("dropping packet:", msg)
         return "Timeout"
@@ -175,10 +179,10 @@ def send(nodenum, msg):
 class Timeout(Exception):
     """Request timed out"""
 
-def trysend(nodenum, msg):
+def trysend(nodenum, msg, can_fail=True):
     """trysend sends a message to a node, but retries if it encounters an error"""
     for sanity in range(30):
-        data = send(nodenum, msg)
+        data = send(nodenum, msg, can_fail=can_fail)
         if data and data != "Wait" and data != "Timeout" and data != "Error":
             return data
         time.sleep(1)
@@ -296,6 +300,9 @@ def run_an_election():
 
         log("commit failed (retry %d)" % retry)
 
+    acks = sum(1 for x in doCommits if x)
+    log("%d of %d nodes acknowledged the commit" % (acks, N-1))
+
     if not quorumOf(doCommits):
         log("commit failed somehow")
     else:
@@ -315,8 +322,15 @@ def abort(xnodes):
             log("node %d: received: %r" % (n, resp))
     sys.exit(1)
 
+def cleanup(xnodes):
+    """cleans up at the end of an election by sending all other nodes a "Kill" message"""
+    log("cleaning up")
+    for n in xnodes:
+        send(n, "kill", can_fail=False)
+
+
 def quorumOf(values):
-    q = sum(int(bool(x)) for x in values)
+    q = sum(1 for x in values if x)
     return q >= int(len(values) * QUORUM)
 
 def select_best_node(neighbors):
@@ -347,14 +361,18 @@ def parse_args():
     parser.add_argument("nodenum", type=int, help="the number of this node")
     parser.add_argument("N", type=int, help="the total number of nodes")
     parser.add_argument("--coord", action="append", type=int, dest="coords",
-        help="indicates the number of a coordinator node")
-    #parser.add_argument("--coord", action="store_true", help="indicates that this node is a coordinator"))
-    #parser.add_argument("--add-coord", action="append", help="port of a coordinator")
+        help="indicates the number of a coordinator node; specify once for each coordinator")
+    parser.add_argument("--quorum", action="store", type=float, default=None,
+        help="the required quorum level between 0.0 and 1.0")
+    parser.add_argument("--failure", action="store", type=float, default=None,
+        help="the transient failure rate (drop rate) between 0.0 and 1.0")
     return parser.parse_args()
 
 def main():
     global N
     global MY_PORT
+    global QUORUM
+    global FAILURE
     global mynodenum
     global myneighbors
     global role
@@ -365,6 +383,11 @@ def main():
     MY_PORT = BASE_PORT + args.nodenum
     mynodenum = args.nodenum
     myneighbors = [(i, random.random()) for i in args.coords]
+    if args.quorum is not None:
+        QUORUM = args.quorum
+    if args.failure is not None:
+        FAILURE = args.failure
+
 
     if args.nodenum in args.coords:
         role = 'coord'
@@ -395,10 +418,13 @@ def main():
         d = time.time() - a
         log("took %f seconds" % d)
 
+        time.sleep(.5)
+        cleanup([i for i in xrange(N) if i != mynodenum])
+
     else:
         if send_hello:
             nodedata = {"port": MY_PORT}
-            data = trysend(initial_coordinator, "hello\37"+str(mynodenum)+"\37" + json.dumps(nodedata))
+            data = trysend(initial_coordinator, "hello\37"+str(mynodenum)+"\37" + json.dumps(nodedata), can_fail=False)
             log("sent hello, received:", data)
 
         #if mynodenum == 8:
