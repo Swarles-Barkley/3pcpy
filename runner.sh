@@ -1,5 +1,9 @@
-nodes=4
+nodes=20
+coords=()
+for n in {1..10}; do
+    coords+=(--coord $n)
+done
 for n in {1..$nodes}; do
-    python pcoord.py --coord 3 $((n-1)) $nodes &
+    python pcoord.py $coords $((n-1)) $nodes &
 done
 wait
