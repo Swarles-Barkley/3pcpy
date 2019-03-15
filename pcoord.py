@@ -399,7 +399,7 @@ def main():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
     sock.bind((TCP_IP, MY_PORT))
-    sock.listen(5)
+    sock.listen(100)
 
     initial_coordinator = args.coords[0]
 
