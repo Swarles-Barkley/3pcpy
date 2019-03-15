@@ -18,6 +18,7 @@ BASE_PORT = 12000
 BUFFER_SIZE = 1024
 N = 3 # number of nodes
 TIMEOUT = 0.250
+RETRIES = 10 # number of times to retry a phase
 
 data_lock = threading.Lock() # protects the following variables
 state = "" # current three-phase-commit node state
@@ -28,7 +29,7 @@ candidate = None
 
 role = 'node' # or coord; never changes
 mynodenum = None
-myneighbors = [(i, random.random()) for i in range(N)]
+myneighbors = []
 
 initialized = threading.Event()
 done = threading.Event()
@@ -200,27 +201,37 @@ def run_an_election():
     neighbors = {} # node => neighbors list
 
     # PHASE 1
-    # TODO: send requests in parallel
-    for n in xnodes:
-        data = send(n, "canCommit?")
+    for retry in xrange(RETRIES):
+        # TODO: send requests in parallel
+        # TODO: count each phase as only sending one message?
+        for n in xnodes:
+            if canCommits[n]:
+                continue
 
-        args = data.split('\37', 2)
-        resp = args[0]
+            data = send(n, "canCommit?")
 
-        if resp == "Yes":
-            nodenum = int(args[1])
-            nbrs = json.loads(args[2])
-            with data_lock:
-                neighbors[nodenum] = nbrs
-            canCommits[n] = True
-        elif resp == "Timeout" or resp == "Error":
-            canCommits[n] = False
-        else:
-            log("node %d: received: %r" % (n, resp))
-            # abort?
+            args = data.split('\37', 2)
+            resp = args[0]
+
+            if resp == "Yes":
+                nodenum = int(args[1])
+                nbrs = json.loads(args[2])
+                with data_lock:
+                    neighbors[nodenum] = nbrs
+                canCommits[n] = True
+            elif resp == "Timeout" or resp == "Error":
+                canCommits[n] = False
+            else:
+                log("node %d: received: %r" % (n, resp))
+                # abort?
+
+        if all(canCommits):
+            break
+
+        log("canCommit failed (retry %d)" % retry)
+        print(canCommits)
 
     if not all(canCommits):
-        print(canCommits)
         log("canCommit: cannot proceed")
         abort(xnodes)
 
@@ -229,14 +240,23 @@ def run_an_election():
 
     # PHASE 2
 
-    for n in xnodes:
-        resp = send_data(n, "preCommit", candidate)
-        if resp == "ACK":
-            preCommits[n] = True
-        elif resp == "Timeout" or resp == "Error":
-            preCommits[n] = False
-        else:
-            log("node %d: received: %r" % (n, resp))
+    for retry in xrange(RETRIES):
+        for n in xnodes:
+            if preCommits[n]:
+                continue
+
+            resp = send_data(n, "preCommit", candidate)
+            if resp == "ACK":
+                preCommits[n] = True
+            elif resp == "Timeout" or resp == "Error":
+                preCommits[n] = False
+            else:
+                log("node %d: received: %r" % (n, resp))
+
+        if all(preCommits):
+            break
+
+        log("preCommit failed (retry %d)" % retry)
 
     if not all(preCommits):
         log("preCommit: cannot proceed")
@@ -245,19 +265,27 @@ def run_an_election():
 
     # PHASE 3
 
-    for n in xnodes:
-        resp = send(n, "doCommit")
-        if resp == "haveCommitted":
-            doCommits[n] = True
-        elif resp == "Timeout" or resp == "Error":
-            doCommits[n] = False
-        else:
-            log("node %d: received: %r" % (n, resp))
+    for retry in xrange(RETRIES):
+        if doCommits[n]:
+            continue
+        for n in xnodes:
+            resp = send(n, "doCommit")
+            if resp == "haveCommitted":
+                doCommits[n] = True
+            elif resp == "Timeout" or resp == "Error":
+                doCommits[n] = False
+            else:
+                log("node %d: received: %r" % (n, resp))
+
+        if all(doCommits):
+            break
+
+        log("commit failed (retry %d)" % retry)
 
     if not all(doCommits):
         log("commit failed somehow")
-
-    log("success")
+    else:
+        log("success")
 
 def abort(xnodes):
     log("aborting...")
@@ -310,12 +338,15 @@ def main():
     global N
     global MY_PORT
     global mynodenum
+    global myneighbors
     global role
 
     args = parse_args()
+    random.seed(1234 + args.nodenum)
     N = args.N
     MY_PORT = BASE_PORT + args.nodenum
     mynodenum = args.nodenum
+    myneighbors = [(i, random.random()) for i in args.coords]
 
     if args.nodenum in args.coords:
         role = 'coord'
