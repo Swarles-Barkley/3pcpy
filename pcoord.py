@@ -31,6 +31,7 @@ candidate = None
 role = 'node' # or coord; never changes
 mynodenum = None
 myneighbors = []
+topology = []
 
 initialized = threading.Event()
 done = threading.Event()
@@ -153,9 +154,12 @@ def get_port_for_node(nodenum):
 def send(nodenum, msg, can_fail=True, stats=True):
     global sent_bytes
     global received_bytes
+    if can_fail and not topology[nodenum][mynodenum]:
+        log("node %d out of range:" % nodenum, msg)
+        return "Timeout"
     if can_fail and random_failure():
         # simulate transient packet loss
-        log("dropping packet:", msg)
+        log("dropping packet to %d:" % nodenum, msg)
         return "Timeout"
     port = get_port_for_node(nodenum)
     addr = (TCP_IP, port)
@@ -370,7 +374,24 @@ def parse_args():
         help="the required quorum level between 0.0 and 1.0")
     parser.add_argument("--failure", action="store", type=float, default=None,
         help="the transient failure rate (drop rate) between 0.0 and 1.0")
+    # TODO: topology type
+    parser.add_argument("--topology", action="store_true",
+        help="generate a randomly-connected network topology")
+    parser.add_argument("--topology-seed", type=int, default=1,
+        help="seed for generating the topology matrix; must be the same for all nodes")
     return parser.parse_args()
+
+def generate_topology(seed, p):
+    """generates a topology matrix for the network in which nodes are connected with probability p"""
+    top = [[1]*N for _ in xrange(N)]
+    rng = random.Random(seed)
+    for i in xrange(0, N):
+        for j in xrange(i, N):
+            connected = (rng.random() < p)
+            top[i][j] = connected
+            top[j][i] = connected
+
+    return top
 
 def main():
     global N
@@ -380,17 +401,21 @@ def main():
     global mynodenum
     global myneighbors
     global role
+    global topology
 
     args = parse_args()
     random.seed(1234 + args.nodenum)
     N = args.N
     MY_PORT = BASE_PORT + args.nodenum
     mynodenum = args.nodenum
+    # TODO: generate neighbors based on topology
     myneighbors = [(i, random.random()) for i in args.coords]
     if args.quorum is not None:
         QUORUM = args.quorum
     if args.failure is not None:
         FAILURE = args.failure
+    if args.topology:
+        topology = generate_topology(args.topology_seed, .90)
 
 
     if args.nodenum in args.coords:
