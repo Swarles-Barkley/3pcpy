@@ -1,6 +1,5 @@
-nodes=100
-python pcoord.py $nodes &
+nodes=4
 for n in {1..$nodes}; do
-    python pnode.py $((n-1)) $nodes &
+    python pcoord.py --coord 3 $((n-1)) $nodes &
 done
 wait
