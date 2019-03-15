@@ -89,7 +89,8 @@ def threadConn(conn):
                     nodes[nodenum] = 1
                     ready = (len(nodes) >= N)
 
-                reply("ok")
+                # not reply() because can't fail and don't want to contribute to stats
+                conn.send("ok")
                 if ready:
                     initialized.set()
 
@@ -133,7 +134,7 @@ def threadConn(conn):
             elif cmd == "kill":
                 log("killed")
                 done.set()
-                sys.exit(1)
+                #sys.exit(1)
 
             else:
                 log("Server doesnt understand: " + data)
@@ -149,7 +150,7 @@ def get_port_for_node(nodenum):
         port = nodes[nodenum]["port"]
     return port
 
-def send(nodenum, msg, can_fail=True):
+def send(nodenum, msg, can_fail=True, stats=True):
     global sent_bytes
     global received_bytes
     if can_fail and random_failure():
@@ -163,11 +164,13 @@ def send(nodenum, msg, can_fail=True):
     try:
         sock.connect(addr)
         sock.send(msg)
-        with stats_lock:
-            sent_bytes += len(msg)
+        if stats:
+            with stats_lock:
+                sent_bytes += len(msg)
         data = sock.recv(BUFFER_SIZE)
-        with stats_lock:
-            received_bytes += len(data)
+        if stats:
+            with stats_lock:
+                received_bytes += len(data)
         return data
     except socket.timeout:
         return "Timeout"
@@ -179,10 +182,11 @@ def send(nodenum, msg, can_fail=True):
 class Timeout(Exception):
     """Request timed out"""
 
-def trysend(nodenum, msg, can_fail=True):
-    """trysend sends a message to a node, but retries if it encounters an error"""
+def trysend(nodenum, msg):
+    """trysend sends a message to a node, but retries if it encounters an error.
+    does not contribute to stats, and is not affected by imaginary transient failures"""
     for sanity in range(30):
-        data = send(nodenum, msg, can_fail=can_fail)
+        data = send(nodenum, msg, can_fail=False, stats=False)
         if data and data != "Wait" and data != "Timeout" and data != "Error":
             return data
         time.sleep(1)
@@ -326,7 +330,7 @@ def cleanup(xnodes):
     """cleans up at the end of an election by sending all other nodes a "Kill" message"""
     log("cleaning up")
     for n in xnodes:
-        send(n, "kill", can_fail=False)
+        send(n, "kill", can_fail=False, stats=False)
 
 
 def quorumOf(values):
@@ -424,7 +428,7 @@ def main():
     else:
         if send_hello:
             nodedata = {"port": MY_PORT}
-            data = trysend(initial_coordinator, "hello\37"+str(mynodenum)+"\37" + json.dumps(nodedata), can_fail=False)
+            data = trysend(initial_coordinator, "hello\37"+str(mynodenum)+"\37" + json.dumps(nodedata))
             log("sent hello, received:", data)
 
         #if mynodenum == 8:
