@@ -309,7 +309,7 @@ def run_an_election():
         log("commit failed (retry %d)" % retry)
 
     acks = sum(1 for x in doCommits if x)
-    log("%d of %d nodes acknowledged the commit" % (acks, N-1))
+    log("%d of %d nodes acknowledged the commit" % (acks, N))
 
     if not quorumOf(doCommits):
         log("commit failed somehow")
