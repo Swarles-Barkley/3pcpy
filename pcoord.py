@@ -20,7 +20,7 @@ N = 3 # number of nodes
 TIMEOUT = 0.250
 RETRIES = 10 # number of times to retry a phase
 QUORUM = 1.0
-FAILURE = 1 - .95 # transient failure rate
+FAILURE = 0.0 # transient failure rate
 
 data_lock = threading.Lock() # protects the following variables
 state = "" # current three-phase-commit node state
