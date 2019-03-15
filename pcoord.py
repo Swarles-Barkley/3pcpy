@@ -154,7 +154,7 @@ def get_port_for_node(nodenum):
 def send(nodenum, msg, can_fail=True, stats=True):
     global sent_bytes
     global received_bytes
-    if can_fail and not topology[nodenum][mynodenum]:
+    if can_fail and topology and not topology[nodenum][mynodenum]:
         log("node %d out of range:" % nodenum, msg)
         return "Timeout"
     if can_fail and random_failure():
