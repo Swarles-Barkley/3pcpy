@@ -401,6 +401,10 @@ def main():
             data = trysend(initial_coordinator, "hello\37"+str(mynodenum)+"\37" + json.dumps(nodedata))
             log("sent hello, received:", data)
 
+        #if mynodenum == 8:
+        #    log("node 8 crashing")
+        #    sys.exit(1)
+
         thr = threading.Thread(target=serverthread, args=(sock,))
         #thr.daemon = True
         thr.start()
