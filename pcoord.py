@@ -19,6 +19,7 @@ BUFFER_SIZE = 1024
 N = 3 # number of nodes
 TIMEOUT = 0.250
 RETRIES = 10 # number of times to retry a phase
+QUORUM = 1.0
 
 data_lock = threading.Lock() # protects the following variables
 state = "" # current three-phase-commit node state
@@ -225,13 +226,13 @@ def run_an_election():
                 log("node %d: received: %r" % (n, resp))
                 # abort?
 
-        if all(canCommits):
+        if quorumOf(canCommits):
             break
 
         log("canCommit failed (retry %d)" % retry)
         print(canCommits)
 
-    if not all(canCommits):
+    if not quorumOf(canCommits):
         log("canCommit: cannot proceed")
         abort(xnodes)
 
@@ -253,12 +254,12 @@ def run_an_election():
             else:
                 log("node %d: received: %r" % (n, resp))
 
-        if all(preCommits):
+        if quorumOf(preCommits):
             break
 
         log("preCommit failed (retry %d)" % retry)
 
-    if not all(preCommits):
+    if not quorumOf(preCommits):
         log("preCommit: cannot proceed")
         abort(xnodes)
 
@@ -277,12 +278,12 @@ def run_an_election():
             else:
                 log("node %d: received: %r" % (n, resp))
 
-        if all(doCommits):
+        if quorumOf(doCommits):
             break
 
         log("commit failed (retry %d)" % retry)
 
-    if not all(doCommits):
+    if not quorumOf(doCommits):
         log("commit failed somehow")
     else:
         log("success")
@@ -300,6 +301,10 @@ def abort(xnodes):
         else:
             log("node %d: received: %r" % (n, resp))
     sys.exit(1)
+
+def quorumOf(values):
+    q = sum(int(bool(x)) for x in values)
+    return q >= int(len(values) * QUORUM)
 
 def select_best_node(neighbors):
     # select the node with the minimum average ping time
