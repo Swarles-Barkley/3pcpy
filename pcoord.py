@@ -339,8 +339,12 @@ def main():
         else:
             time.sleep(1)
 
-        print("running")
+
+        log("running an election")
+        a = time.time()
         run_an_election()
+        d = time.time() - a
+        log("took %f seconds" % d)
 
     else:
         if send_hello:
