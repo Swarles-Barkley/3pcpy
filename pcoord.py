@@ -20,6 +20,7 @@ N = 3 # number of nodes
 TIMEOUT = 0.250
 RETRIES = 10 # number of times to retry a phase
 QUORUM = 1.0
+FAILURE = 1 - .95 # transient failure rate
 
 data_lock = threading.Lock() # protects the following variables
 state = "" # current three-phase-commit node state
@@ -50,6 +51,9 @@ def log(*args):
     else:
         print("[client %s]" % mynodenum, *args)
 
+def random_failure():
+    return random.random() <= FAILURE
+
 def threadConn(conn):
     global state
     global winner
@@ -57,6 +61,11 @@ def threadConn(conn):
     global received_bytes
     def reply(msg):
         global sent_bytes
+        if random_failure():
+            # simulate transient packet loss
+            log("dropping response:", msg)
+            conn.send("Timeout")
+            return 0
         r = conn.send(msg)
         with stats_lock:
             sent_bytes += len(msg)
@@ -139,6 +148,10 @@ def get_port_for_node(nodenum):
 def send(nodenum, msg):
     global sent_bytes
     global received_bytes
+    if random_failure():
+        # simulate transient packet loss
+        log("dropping packet:", msg)
+        return "Timeout"
     port = get_port_for_node(nodenum)
     addr = (TCP_IP, port)
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -267,9 +280,9 @@ def run_an_election():
     # PHASE 3
 
     for retry in xrange(RETRIES):
-        if doCommits[n]:
-            continue
         for n in xnodes:
+            if doCommits[n]:
+                continue
             resp = send(n, "doCommit")
             if resp == "haveCommitted":
                 doCommits[n] = True
