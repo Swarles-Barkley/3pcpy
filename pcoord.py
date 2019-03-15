@@ -23,6 +23,8 @@ data_lock = threading.Lock() # protects the following variables
 state = "" # current three-phase-commit node state
 nodes = {} # node => nodedata dict
 current_coordinator = None
+winner = None
+candidate = None
 
 role = 'node' # or coord; never changes
 mynodenum = None
@@ -49,6 +51,7 @@ def log(*args):
 def threadConn(conn):
     global state
     global winner
+    global candidate
     global received_bytes
     def reply(msg):
         global sent_bytes
@@ -60,7 +63,7 @@ def threadConn(conn):
     try:
         data = conn.recv(BUFFER_SIZE)
         if not data: return
-        print("data is", data)
+        log("data is", data)
         args = data.split('\37', 2)
         cmd = args[0]
         if len(args) > 1:
@@ -101,7 +104,7 @@ def threadConn(conn):
             elif cmd == "preCommit":
                 with data_lock:
                     state = "precommit"
-                    #candidate = extra[0]
+                    candidate = int(extra[0])
                 reply("ACK")
 
             elif cmd == "doAbort":
@@ -113,7 +116,7 @@ def threadConn(conn):
             elif cmd == "doCommit":
                 with data_lock:
                     state = "committed"
-                    #winner = candidate
+                    winner = candidate
                 reply("haveCommitted")
                 done.set()
 
@@ -203,12 +206,12 @@ def run_an_election():
 
         args = data.split('\37', 2)
         resp = args[0]
-        nodenum = int(args[1])
-        nbrs = json.loads(args[2])
-        with data_lock:
-            neighbors[nodenum] = nbrs
 
         if resp == "Yes":
+            nodenum = int(args[1])
+            nbrs = json.loads(args[2])
+            with data_lock:
+                neighbors[nodenum] = nbrs
             canCommits[n] = True
         elif resp == "Timeout" or resp == "Error":
             canCommits[n] = False
@@ -282,18 +285,7 @@ def select_best_node(neighbors):
     best, _ = min(combined.items(), key=operator.itemgetter(1))
     return best
 
-def serverthread(port):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.bind((TCP_IP, port))
-    sock.listen(5)
-
-    while 1:
-        conn, addr = sock.accept()
-        thr = threading.Thread(target=threadConn, args=(conn,))
-        thr.start()
-
-def node_serverthread(sock):
+def serverthread(sock):
     sock.settimeout(TIMEOUT)
     while not done.is_set():
         try:
@@ -327,9 +319,18 @@ def main():
 
     if args.nodenum in args.coords:
         role = 'coord'
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+    sock.bind((TCP_IP, MY_PORT))
+    sock.listen(5)
+
+    initial_coordinator = args.coords[0]
+
+    if mynodenum == initial_coordinator:
         nodes[mynodenum] = 1
 
-        thr = threading.Thread(target=serverthread, args=(MY_PORT,))
+        thr = threading.Thread(target=serverthread, args=(sock,))
         thr.daemon = True
         thr.start()
 
@@ -342,18 +343,12 @@ def main():
         run_an_election()
 
     else:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-        sock.bind((TCP_IP, MY_PORT))
-        sock.listen(5)
-
         if send_hello:
             nodedata = {"port": MY_PORT}
-            initial_coord = args.coords[0]
-            data = trysend(initial_coord, "hello\37"+str(mynodenum)+"\37" + json.dumps(nodedata))
+            data = trysend(initial_coordinator, "hello\37"+str(mynodenum)+"\37" + json.dumps(nodedata))
             log("sent hello, received:", data)
 
-        thr = threading.Thread(target=node_serverthread, args=(sock,))
+        thr = threading.Thread(target=serverthread, args=(sock,))
         #thr.daemon = True
         thr.start()
 
@@ -362,6 +357,7 @@ def main():
         #sock.close()
 
     log("final state:", state)
+    log("winner:", winner)
     with stats_lock:
         log("sent %d bytes" % sent_bytes)
         log("received %d bytes" % received_bytes)
